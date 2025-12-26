@@ -5,99 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>For You | Christmas Memories</title>
     <style>
-        /* 深邃星空背景 */
         body { 
             margin: 0; overflow: hidden; background-color: #050505; font-family: 'Helvetica', sans-serif; 
             background: radial-gradient(circle at 50% 40%, #1a1020 0%, #000000 90%);
         }
-        
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
-        /* UI层 */
         #ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;
             padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;
         }
-
         .hud-top { display:flex; justify-content: space-between; width:100%; }
-
         .hud {
-            pointer-events: auto;
-            background: rgba(255, 255, 255, 0.05); 
+            pointer-events: auto; background: rgba(255, 255, 255, 0.05); 
             backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 12px;
-            padding: 20px; color: #fff; width: 280px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 20px; color: #fff; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-
         h2 { margin: 0 0 10px 0; color: #ffd700; font-size: 1.1rem; letter-spacing: 2px; text-transform: uppercase; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; }
         .row { font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; color: #ccc; }
         .icon { width: 30px; font-size: 16px; text-align: center; margin-right: 5px; }
-
-        /* 开场动画遮罩 */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 2000;
-            backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.95); z-index: 2000; backdrop-filter: blur(20px);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 1s, visibility 1s;
         }
-        
         .start-btn {
             background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
-            border: none; padding: 18px 60px; 
-            color: #333; border-radius: 50px; cursor: pointer; font-size: 20px; font-weight: 900;
+            border: none; padding: 18px 60px; color: #333; border-radius: 50px; cursor: pointer; font-size: 20px; font-weight: 900;
             box-shadow: 0 0 40px rgba(142, 197, 252, 0.4); letter-spacing: 4px; text-transform: uppercase;
             animation: pulse 2s infinite; transition: transform 0.2s;
         }
-        .start-btn:active { transform: scale(0.95); }
         @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(142,197,252,0.6);} 70% {box-shadow: 0 0 0 20px rgba(0,0,0,0);} 100% {box-shadow: 0 0 0 0 rgba(0,0,0,0);} }
-
         #loader {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;
             background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
         .spinner { width: 50px; height: 50px; border: 4px solid #333; border-top: 4px solid #ffd700; border-radius: 50%; animation: spin 1s infinite linear; }
         @keyframes spin { 100% {transform: rotate(360deg);} }
-
         #debug { color:#666; font-size:12px; text-align:right;}
-        .stat-on { color: #8ec5fc; text-shadow: 0 0 5px #8ec5fc; font-weight: bold; }
         #video-input { display:none; }
     </style>
-    
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
 </head>
 <body>
-    
     <audio id="bgm" loop style="display:none"></audio>
-
-    <div id="loader">
-        <div class="spinner"></div>
-        <div style="color:white; margin-top:15px; letter-spacing: 2px;">LOADING...</div>
-    </div>
-
+    <div id="loader"><div class="spinner"></div><div style="color:white; margin-top:15px;">LOADING...</div></div>
     <div id="start-overlay">
-        <div style="color: #fff; font-size: 20px; margin-bottom: 40px; letter-spacing: 3px; font-weight:lighter;">CHRISTMAS MEMORIES</div>
+        <div style="color: #fff; font-size: 20px; margin-bottom: 40px; letter-spacing: 3px;">CHRISTMAS MEMORIES</div>
         <button class="start-btn" onclick="startExperience()">OPEN</button>
-        <div style="color:#666; font-size:12px; margin-top:20px; font-family: monospace;">Use hand gestures to interact</div>
     </div>
-
     <video id="video-input"></video>
-
     <div id="ui-layer">
         <div class="hud-top">
             <div class="hud">
                 <h2>Interaction</h2>
                 <div class="row"><span class="icon">✊</span> Fist: Tree</div>
                 <div class="row"><span class="icon">🖐</span> Palm: Scatter</div>
-                <div class="row"><span class="icon">👌</span> Pinch: Random Photo</div>
+                <div class="row"><span class="icon">👌</span> Pinch: Photo</div>
             </div>
             <div id="debug">
                 <div>AI Tracking: <span id="status-track">WAITING</span></div>
@@ -105,7 +74,6 @@
             </div>
         </div>
     </div>
-
     <div id="canvas-container"></div>
 
     <script type="module">
@@ -127,32 +95,13 @@
             music: 'https://3056005310-crypto.github.io/christmas2025/bgm.mp3' 
         };
 
-        window.startExperience = function() {
-            const overlay = document.getElementById('start-overlay');
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            setTimeout(()=> overlay.style.visibility='hidden', 1000);
-            
-            if(SHARED_MEMORIES.music && SHARED_MEMORIES.music.startsWith('http')) {
-                const audio = document.getElementById('bgm');
-                audio.src = SHARED_MEMORIES.music;
-                audio.volume = 0.6;
-                audio.play().catch(e=>console.log("Audio needs user interaction first"));
-            }
-
-            buildPhotos(SHARED_MEMORIES.photos);
-        };
-
         const CONFIG = {
             colors: { green: 0x052e16, gold: 0xffeebb, red: 0xd92027 },
-            count: 1200,          
-            treeH: 35, treeR: 14
+            count: 1200, treeH: 35, treeR: 14
         };
 
         let scene, camera, renderer, composer;
-        let instances = {}; 
-        let objData = [];
-        let magicSystem; 
+        let instances = {}; let objData = []; let magicSystem;
         let photoGroup = new THREE.Group();
         const dummy = new THREE.Object3D();
         const STATE = { mode: 'TREE', zoomIdx: -1, input: {x:0, y:0}, hasHand:false };
@@ -167,29 +116,25 @@
             camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 500);
             camera.position.set(0, 0, 55); 
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-            
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2; 
+            renderer.toneMappingExposure = 0.8; // 修正过曝：降低曝光值
             container.appendChild(renderer.domElement);
 
             const pmrem = new THREE.PMREMGenerator(renderer);
             scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-            const amb = new THREE.AmbientLight(0xffffff, 0.6); scene.add(amb);
-            const sun = new THREE.DirectionalLight(0xffecd2, 2.2); sun.position.set(20, 20, 50); scene.add(sun);
-            const rim = new THREE.DirectionalLight(0x88ccff, 1.2); rim.position.set(-20, 10, -10); scene.add(rim);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4)); // 降低环境光
+            const sun = new THREE.DirectionalLight(0xffecd2, 1.0); sun.position.set(20, 20, 50); scene.add(sun);
 
             const rp = new RenderPass(scene, camera);
-            const bp = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bp.threshold = 0.3; bp.strength = 1.2; bp.radius = 0.8;
+            const bp = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.4, 0.85); // 修正过曝：降低辉光强度
             composer = new EffectComposer(renderer); composer.addPass(rp); composer.addPass(bp);
 
             buildContent();
             buildMagicDust();
-            
             window.addEventListener('resize', onResize);
             document.getElementById('loader').style.display='none';
         }
@@ -197,63 +142,29 @@
         function buildContent() {
             const gSphere = new THREE.SphereGeometry(0.7, 16, 16);
             const gBox = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-            
             const mGold = new THREE.MeshStandardMaterial({color: CONFIG.colors.gold, metalness: 0.9, roughness: 0.2});
             const mGreen = new THREE.MeshStandardMaterial({color: CONFIG.colors.green, metalness: 0.3, roughness: 0.6});
             const mRed = new THREE.MeshStandardMaterial({color: CONFIG.colors.red, metalness: 0.6, roughness: 0.3});
-
-            const cvs = document.createElement('canvas'); cvs.width=64; cvs.height=64;
-            const cx=cvs.getContext('2d');
-            cx.fillStyle='#fff'; cx.fillRect(0,0,64,64); cx.fillStyle='#c00';
-            for(let i=-64; i<128; i+=16) {cx.beginPath();cx.moveTo(i,0);cx.lineTo(i+8,0);cx.lineTo(i+72,64);cx.lineTo(i+64,64);cx.fill();}
-            const tCandy = new THREE.CanvasTexture(cvs); tCandy.wrapS=tCandy.wrapT=THREE.RepeatWrapping;
-
+            
             createInst(gSphere, mGreen, 500, 'green');
             createInst(gSphere, mGold, 250, 'gold');
             createInst(gBox, mRed, 200, 'gift');
-            createInst(new THREE.CylinderGeometry(0.12, 0.12, 3), new THREE.MeshStandardMaterial({map:tCandy, roughness:0.4}), 80, 'cane');
 
             const star = new THREE.Mesh(new THREE.OctahedronGeometry(2.5, 0), new THREE.MeshBasicMaterial({color:0xfffae0}));
-            star.name='STAR';
-            star.position.y = CONFIG.treeH/2 + 2;
-            scene.add(star);
-            
-            const halo = new THREE.Mesh(new THREE.PlaneGeometry(12,12), new THREE.MeshBasicMaterial({
-                color:0xffaa00, transparent:true, opacity:0.3, side:2,
-                map: createGlowTexture()
-            }));
-            halo.name='HALO';
-            star.add(halo);
-        }
-
-        function createGlowTexture() {
-            const cvs = document.createElement('canvas'); cvs.width=64; cvs.height=64;
-            const ctx=cvs.getContext('2d');
-            const grad = ctx.createRadialGradient(32,32,0, 32,32,32);
-            grad.addColorStop(0, 'rgba(255,255,255,1)');
-            grad.addColorStop(1, 'rgba(255,150,0,0)');
-            ctx.fillStyle=grad; ctx.fillRect(0,0,64,64);
-            return new THREE.CanvasTexture(cvs);
+            star.name='STAR'; star.position.y = CONFIG.treeH/2 + 2; scene.add(star);
         }
 
         function createInst(geo, mat, count, type) {
             const mesh = new THREE.InstancedMesh(geo, mat, count);
-            scene.add(mesh);
-            instances[type] = mesh;
-
+            scene.add(mesh); instances[type] = mesh;
             for(let i=0; i<count; i++) {
-                const p = i/count;
-                const y = (p - 0.5) * CONFIG.treeH;
+                const p = i/count; const y = (p - 0.5) * CONFIG.treeH;
                 const maxR = (1 - p) * CONFIG.treeR * 1.2 + 0.5;
                 let r, angle;
                 if(Math.random() > 0.3) { r = maxR - Math.random()*1.5; angle = p * Math.PI * 40; } 
                 else { r = Math.random() * maxR * 0.9; angle = Math.random() * Math.PI * 2; }
-                const tx = Math.cos(angle)*r;
-                const tz = Math.sin(angle)*r;
-                
                 objData.push({
-                    mesh: mesh, index: i, type:type,
-                    tPos: new THREE.Vector3(tx, y, tz),
+                    mesh: mesh, index: i, type:type, tPos: new THREE.Vector3(Math.cos(angle)*r, y, Math.sin(angle)*r),
                     sPos: new THREE.Vector3((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*80),
                     cPos: new THREE.Vector3((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*80),
                     offset: Math.random()*10
@@ -262,156 +173,69 @@
         }
 
         function buildMagicDust() {
-            const count = 3000;
-            const geo = new THREE.BufferGeometry();
-            const pos = [];
-            const cols = [];
-            const speeds = [];
-
-            const color1 = new THREE.Color(0xffd700); 
-            const color2 = new THREE.Color(0x8ec5fc); 
-            const color3 = new THREE.Color(0xffffff); 
-
+            const count = 2500; const geo = new THREE.BufferGeometry();
+            const pos = [], cols = [], speeds = [];
             for(let i=0; i<count; i++) {
-                const r = Math.random() * 40 + 5; 
-                const theta = Math.random() * Math.PI * 2;
-                const x = Math.cos(theta) * r;
-                const z = Math.sin(theta) * r;
-                const y = (Math.random() - 0.5) * 60;
-                
-                pos.push(x, y, z);
+                const r = Math.random() * 40 + 5; const theta = Math.random() * Math.PI * 2;
+                pos.push(Math.cos(theta)*r, (Math.random()-0.5)*60, Math.sin(theta)*r);
                 const type = Math.random();
-                let c = type > 0.6 ? color1 : (type > 0.3 ? color2 : color3);
-                cols.push(c.r, c.g, c.b);
-                speeds.push(Math.random() * 0.5 + 0.2);
+                const c = type > 0.6 ? new THREE.Color(0xffd700) : (type > 0.3 ? new THREE.Color(0x8ec5fc) : new THREE.Color(0xffffff));
+                cols.push(c.r, c.g, c.b); speeds.push(Math.random()*0.5 + 0.2);
             }
-
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
             geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
             geo.setAttribute('speed', new THREE.Float32BufferAttribute(speeds, 1));
-
-            const mat = new THREE.PointsMaterial({
-                size: 0.6, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false
-            });
-
-            magicSystem = new THREE.Points(geo, mat);
+            magicSystem = new THREE.Points(geo, new THREE.PointsMaterial({size: 0.5, vertexColors: true, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false}));
             scene.add(magicSystem);
         }
 
         window.buildPhotos = function(urls) {
-            if(photoGroup) { photoGroup.clear(); scene.remove(photoGroup); }
-            photoGroup = new THREE.Group();
+            photoGroup.clear(); scene.remove(photoGroup); photoGroup = new THREE.Group();
             objData = objData.filter(d=>!d.isPhoto);
-
-            const n = urls.length || 0;
-            const geo = new THREE.PlaneGeometry(2.5, 4.0); 
-
-            const loader = new THREE.TextureLoader();
-            loader.setCrossOrigin('anonymous'); 
-
-            for(let i=0; i<n; i++) {
-                if(!urls[i]) continue;
-                
-                const tex = loader.load(urls[i]);
-                tex.colorSpace = THREE.SRGBColorSpace; 
-                
-                const mat = new THREE.MeshBasicMaterial({ 
-                    map: tex, color: 0xffffff, side: THREE.DoubleSide, transparent: false, opacity:1 
-                }); 
-                const mesh = new THREE.Mesh(geo, mat);
-                
-                const p = i/n;
-                const y = (p - 0.5) * (CONFIG.treeH-6); 
-                const r = ((1-p) * CONFIG.treeR) + 3.5;
-                const ang = p * Math.PI * 6 + 0.5;
-
+            const loader = new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
+            urls.forEach((url, i) => {
+                const tex = loader.load(url); tex.colorSpace = THREE.SRGBColorSpace;
+                const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 4.5), new THREE.MeshBasicMaterial({map: tex, side: 2}));
+                const p = i/urls.length; const y = (p-0.5)*(CONFIG.treeH-6); const r = (1-p)*CONFIG.treeR+4; const ang = p*Math.PI*6;
                 objData.push({
-                    mesh:mesh, index:i, isPhoto:true,
-                    tPos: new THREE.Vector3(Math.cos(ang)*r, y, Math.sin(ang)*r),
-                    sPos: new THREE.Vector3((Math.random()-0.5)*80, (Math.random()-0.5)*80, 20),
-                    cPos: new THREE.Vector3(0,0,0)
+                    mesh:mesh, index:i, isPhoto:true, tPos: new THREE.Vector3(Math.cos(ang)*r, y, Math.sin(ang)*r),
+                    sPos: new THREE.Vector3((Math.random()-0.5)*80, (Math.random()-0.5)*80, 20), cPos: new THREE.Vector3(0,0,0)
                 });
                 photoGroup.add(mesh);
-            }
+            });
             scene.add(photoGroup);
         }
 
         function animate() {
             requestAnimationFrame(animate);
             const time = Date.now()*0.001;
-            const lerpSpeed = 0.05; 
-
-            const star = scene.getObjectByName('STAR');
-            if(star) {
-                star.rotation.y -= 0.01;
-                star.children[0].lookAt(camera.position);
-            }
-
-            if(magicSystem) {
-                const positions = magicSystem.geometry.attributes.position.array;
-                const speeds = magicSystem.geometry.attributes.speed.array;
-                for(let i=0; i < positions.length / 3; i++) {
-                    const idx = i * 3;
-                    positions[idx + 1] += speeds[i] * 0.1; 
-                    if(positions[idx + 1] > 40) positions[idx + 1] = -40;
-                    let x = positions[idx], z = positions[idx + 2];
-                    const sin = Math.sin(0.01), cos = Math.cos(0.01);
-                    positions[idx] = x * cos - z * sin;
-                    positions[idx + 2] = x * sin + z * cos;
-                }
-                magicSystem.geometry.attributes.position.needsUpdate = true;
-                magicSystem.material.size = 0.6 + Math.sin(time * 3) * 0.2;
-            }
-
+            
             if(STATE.mode !== 'TREE') {
                 scene.rotation.y += (STATE.input.x - scene.rotation.y)*0.05;
                 scene.rotation.x += (STATE.input.y*0.3 - scene.rotation.x)*0.05;
             } else {
-                scene.rotation.y += 0.003; 
-                scene.rotation.x += (0 - scene.rotation.x)*0.05;
+                scene.rotation.y += 0.003; scene.rotation.x += (0 - scene.rotation.x)*0.05;
             }
 
-            scene.updateMatrixWorld();
+            const camQuat = new THREE.Quaternion(); camera.getWorldQuaternion(camQuat);
+            const sceneQuatInv = scene.quaternion.clone().invert();
 
             objData.forEach(d => {
-                let target;
+                let target = (STATE.mode==='ZOOM' && d.isPhoto && d.index===STATE.zoomIdx) ? 
+                             photoGroup.worldToLocal(new THREE.Vector3(0,0,42)) : 
+                             (STATE.mode==='TREE' ? d.tPos : d.sPos);
 
-                if(STATE.mode==='ZOOM' && d.isPhoto && d.index===STATE.zoomIdx) {
-                     let vWorld = new THREE.Vector3(0, 0, 42); 
-                     photoGroup.worldToLocal(vWorld); 
-                     target = vWorld;
-                     d.mesh.quaternion.copy(camera.quaternion);
-                     d.mesh.scale.lerp(new THREE.Vector3(2.3, 2.3, 2.3), lerpSpeed*1.5); 
-                     d.cPos.lerp(target, 0.15); 
-                     d.mesh.position.copy(d.cPos);
-                     return;
-                }
-
-                if(STATE.mode==='TREE') {
-                    target = d.tPos;
-                    if(d.isPhoto) {
-                        d.mesh.scale.lerp(new THREE.Vector3(1.2,1.2,1.2), lerpSpeed);
-                        d.mesh.quaternion.copy(camera.quaternion);
-                    }
-                } else {
-                    target = d.sPos;
-                    if(d.isPhoto) {
-                        d.mesh.scale.lerp(new THREE.Vector3(1,1,1), lerpSpeed);
-                        d.mesh.quaternion.copy(camera.quaternion);
-                    }
-                    else dummy.rotation.set(time+d.offset, time*0.5, 0);
-                }
-
-                d.cPos.lerp(target, lerpSpeed);
-                dummy.position.copy(d.cPos);
-                dummy.position.y += Math.sin(time*2 + d.index) * 0.15;
-
+                d.cPos.lerp(target, 0.06);
                 if(d.isPhoto) {
-                    d.mesh.position.copy(dummy.position);
+                    d.mesh.position.copy(d.cPos);
+                    // 修正：修正平行屏幕逻辑，抵消场景旋转
+                    d.mesh.quaternion.copy(sceneQuatInv).multiply(camQuat);
+                    if(STATE.mode==='ZOOM' && d.index===STATE.zoomIdx) d.mesh.scale.lerp(new THREE.Vector3(2.5,2.5,2.5), 0.1);
+                    else d.mesh.scale.lerp(new THREE.Vector3(1.2,1.2,1.2), 0.1);
                 } else {
-                    if(STATE.mode==='TREE') dummy.rotation.set(0,0,0);
-                    dummy.updateMatrix();
-                    d.mesh.setMatrixAt(d.index, dummy.matrix);
+                    dummy.position.copy(d.cPos); 
+                    if(STATE.mode!=='TREE') dummy.rotation.set(time+d.offset, time*0.5, 0); else dummy.rotation.set(0,0,0);
+                    dummy.updateMatrix(); d.mesh.setMatrixAt(d.index, dummy.matrix);
                 }
             });
             Object.values(instances).forEach(i => i.instanceMatrix.needsUpdate = true);
@@ -423,61 +247,34 @@
                 const vid = document.getElementById('video-input');
                 const hands = new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
                 hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.5});
-
-                const trackDOM = document.getElementById('status-track');
-                const gestDOM = document.getElementById('status-gest');
-
                 hands.onResults(res => {
+                    const trackDOM = document.getElementById('status-track');
+                    const gestDOM = document.getElementById('status-gest');
                     if(res.multiHandLandmarks.length) {
-                        STATE.hasHand = true;
-                        if(trackDOM) { trackDOM.innerText = "ACTIVE"; trackDOM.className = 'stat-on'; }
+                        STATE.hasHand = true; trackDOM.innerText = "ACTIVE"; trackDOM.className = 'stat-on';
                         const lm = res.multiHandLandmarks[0];
                         let fold=0; [8,12,16,20].forEach(i=>{ if(Math.hypot(lm[i].x-lm[0].x, lm[i].y-lm[0].y)<0.25) fold++; });
-                        const isFist = fold>=3;
-                        const isPinch = Math.hypot(lm[4].x-lm[8].x, lm[4].y-lm[8].y) < 0.05;
-
-                        STATE.input.x = -(lm[9].x - 0.5) * 4;
-                        STATE.input.y = (lm[9].y - 0.5) * 4;
-
-                        if(isFist) {
-                            STATE.mode='TREE'; STATE.zoomIdx=-1;
-                            gestDOM.innerText = "FIST";
-                        } else if(isPinch) {
-                             if(STATE.mode !== 'ZOOM') {
-                                STATE.mode='ZOOM';
-                                const photoList = objData.filter(d => d.isPhoto);
-                                if (photoList.length > 0) {
-                                    const randomPhoto = photoList[Math.floor(Math.random() * photoList.length)];
-                                    STATE.zoomIdx = randomPhoto.index; 
-                                }
-                             }
-                             gestDOM.innerText = "PINCH";
-                        } else {
-                            if(STATE.mode === 'ZOOM') STATE.zoomIdx = -1;
-                            STATE.mode='SCATTER';
-                            gestDOM.innerText = "OPEN";
-                        }
-                    } else {
-                        STATE.hasHand = false;
-                        if(trackDOM) { trackDOM.innerText = "SEARCHING..."; trackDOM.className = ''; }
-                        gestDOM.innerText = "-";
-                    }
+                        STATE.input.x = -(lm[9].x - 0.5) * 4; STATE.input.y = (lm[9].y - 0.5) * 4;
+                        if(fold>=3) { STATE.mode='TREE'; STATE.zoomIdx=-1; gestDOM.innerText = "FIST"; }
+                        else if(Math.hypot(lm[4].x-lm[8].x, lm[4].y-lm[8].y) < 0.05) {
+                            if(STATE.mode !== 'ZOOM') { STATE.mode='ZOOM'; STATE.zoomIdx = Math.floor(Math.random()*6); }
+                            gestDOM.innerText = "PINCH";
+                        } else { STATE.mode='SCATTER'; STATE.zoomIdx=-1; gestDOM.innerText = "OPEN"; }
+                    } else { STATE.hasHand = false; trackDOM.innerText = "SEARCHING..."; gestDOM.innerText = "-"; }
                 });
                 const cam = new Camera(vid, {onFrame:async()=>{await hands.send({image:vid})}, width:480, height:360});
-                await cam.start();
-            } catch(e) { console.log("AI Init error", e); }
+                cam.start();
+            } catch(e) {}
         }
-
         function onResize() {
             camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth,window.innerHeight); composer.setSize(window.innerWidth,window.innerHeight);
         }
-        document.addEventListener('mousemove', e=>{
-            if(!STATE.hasHand) {
-                STATE.input.x = (e.clientX/window.innerWidth-0.5)*4;
-                STATE.input.y = (e.clientY/window.innerHeight-0.5)*2;
-            }
-        });
+        window.startExperience = function() {
+            document.getElementById('start-overlay').style.display='none';
+            const audio = document.getElementById('bgm'); audio.src = SHARED_MEMORIES.music; audio.play();
+            buildPhotos(SHARED_MEMORIES.photos);
+        };
     </script>
 </body>
 </html>
