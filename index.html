@@ -115,9 +115,6 @@
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-       // ==========================================
-        //  配置区域：照片已为您替换为最新的 6 张
-        // ==========================================
         const SHARED_MEMORIES = {
             photos: [
                 'https://i.postimg.cc/v8CDFzR2/1aca35e99d3af69a18b824f6025743df.jpg',
@@ -127,10 +124,8 @@
                 'https://i.postimg.cc/3rzW5BMP/7d7880f923c410c5e7bc7e304d60cd00.jpg',
                 'https://i.postimg.cc/Y2TjK3Kc/9c79cd9c5e9e96f10769a3754e356324.jpg'
             ],
-            // 如果你有喜欢的背景音乐直链，可以填在下面的引号里
             music: 'https://3056005310-crypto.github.io/christmas2025/bgm.mp3' 
         };
-        // ==========================================
 
         window.startExperience = function() {
             const overlay = document.getElementById('start-overlay');
@@ -157,7 +152,7 @@
         let scene, camera, renderer, composer;
         let instances = {}; 
         let objData = [];
-        let magicSystem; // 新增：魔法星尘系统
+        let magicSystem; 
         let photoGroup = new THREE.Group();
         const dummy = new THREE.Object3D();
         const STATE = { mode: 'TREE', zoomIdx: -1, input: {x:0, y:0}, hasHand:false };
@@ -193,7 +188,6 @@
             composer = new EffectComposer(renderer); composer.addPass(rp); composer.addPass(bp);
 
             buildContent();
-            // 这里替换了原来的 buildSnow()
             buildMagicDust();
             
             window.addEventListener('resize', onResize);
@@ -267,9 +261,6 @@
             }
         }
 
-        // ============================================
-        //  新增：魔法星尘特效函数
-        // ============================================
         function buildMagicDust() {
             const count = 3000;
             const geo = new THREE.BufferGeometry();
@@ -277,9 +268,9 @@
             const cols = [];
             const speeds = [];
 
-            const color1 = new THREE.Color(0xffd700); // 金色
-            const color2 = new THREE.Color(0x8ec5fc); // 冰蓝
-            const color3 = new THREE.Color(0xffffff); // 纯白
+            const color1 = new THREE.Color(0xffd700); 
+            const color2 = new THREE.Color(0x8ec5fc); 
+            const color3 = new THREE.Color(0xffffff); 
 
             for(let i=0; i<count; i++) {
                 const r = Math.random() * 40 + 5; 
@@ -289,13 +280,9 @@
                 const y = (Math.random() - 0.5) * 60;
                 
                 pos.push(x, y, z);
-                
-                // 随机分配颜色
                 const type = Math.random();
                 let c = type > 0.6 ? color1 : (type > 0.3 ? color2 : color3);
                 cols.push(c.r, c.g, c.b);
-                
-                // 速度差异
                 speeds.push(Math.random() * 0.5 + 0.2);
             }
 
@@ -304,12 +291,7 @@
             geo.setAttribute('speed', new THREE.Float32BufferAttribute(speeds, 1));
 
             const mat = new THREE.PointsMaterial({
-                size: 0.6, 
-                vertexColors: true, 
-                transparent: true, 
-                opacity: 0.8, 
-                blending: THREE.AdditiveBlending, 
-                depthWrite: false
+                size: 0.6, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false
             });
 
             magicSystem = new THREE.Points(geo, mat);
@@ -322,9 +304,8 @@
             objData = objData.filter(d=>!d.isPhoto);
 
             const n = urls.length || 0;
-            const geo = new THREE.PlaneGeometry(2.25, 4.0); 
+            const geo = new THREE.PlaneGeometry(2.5, 4.0); 
 
-            // 创建带跨域许可的加载器
             const loader = new THREE.TextureLoader();
             loader.setCrossOrigin('anonymous'); 
 
@@ -334,7 +315,9 @@
                 const tex = loader.load(urls[i]);
                 tex.colorSpace = THREE.SRGBColorSpace; 
                 
-                const mat = new THREE.MeshBasicMaterial({ map: tex, color: 0xaaaaaa, side: THREE.DoubleSide }); 
+                const mat = new THREE.MeshBasicMaterial({ 
+                    map: tex, color: 0xffffff, side: THREE.DoubleSide, transparent: false, opacity:1 
+                }); 
                 const mesh = new THREE.Mesh(geo, mat);
                 
                 const p = i/n;
@@ -346,8 +329,7 @@
                     mesh:mesh, index:i, isPhoto:true,
                     tPos: new THREE.Vector3(Math.cos(ang)*r, y, Math.sin(ang)*r),
                     sPos: new THREE.Vector3((Math.random()-0.5)*80, (Math.random()-0.5)*80, 20),
-                    cPos: new THREE.Vector3(0,0,0),
-                    lookOut: new THREE.Vector3(Math.cos(ang)*r*2, y, Math.sin(ang)*r*2)
+                    cPos: new THREE.Vector3(0,0,0)
                 });
                 photoGroup.add(mesh);
             }
@@ -365,33 +347,19 @@
                 star.children[0].lookAt(camera.position);
             }
 
-            // ========================================
-            //  更新粒子：让它们螺旋上升
-            // ========================================
             if(magicSystem) {
                 const positions = magicSystem.geometry.attributes.position.array;
                 const speeds = magicSystem.geometry.attributes.speed.array;
-                
                 for(let i=0; i < positions.length / 3; i++) {
                     const idx = i * 3;
-                    
-                    // 1. 上升
                     positions[idx + 1] += speeds[i] * 0.1; 
                     if(positions[idx + 1] > 40) positions[idx + 1] = -40;
-
-                    // 2. 螺旋旋转
-                    let x = positions[idx];
-                    let z = positions[idx + 2];
-                    
-                    const sin = Math.sin(0.01);
-                    const cos = Math.cos(0.01);
-                    
+                    let x = positions[idx], z = positions[idx + 2];
+                    const sin = Math.sin(0.01), cos = Math.cos(0.01);
                     positions[idx] = x * cos - z * sin;
                     positions[idx + 2] = x * sin + z * cos;
                 }
                 magicSystem.geometry.attributes.position.needsUpdate = true;
-                
-                // 3. 整体闪烁
                 magicSystem.material.size = 0.6 + Math.sin(time * 3) * 0.2;
             }
 
@@ -411,9 +379,8 @@
                 if(STATE.mode==='ZOOM' && d.isPhoto && d.index===STATE.zoomIdx) {
                      let vWorld = new THREE.Vector3(0, 0, 42); 
                      photoGroup.worldToLocal(vWorld); 
-                     
                      target = vWorld;
-                     d.mesh.lookAt(camera.position); 
+                     d.mesh.quaternion.copy(camera.quaternion);
                      d.mesh.scale.lerp(new THREE.Vector3(2.3, 2.3, 2.3), lerpSpeed*1.5); 
                      d.cPos.lerp(target, 0.15); 
                      d.mesh.position.copy(d.cPos);
@@ -424,11 +391,14 @@
                     target = d.tPos;
                     if(d.isPhoto) {
                         d.mesh.scale.lerp(new THREE.Vector3(1.2,1.2,1.2), lerpSpeed);
-                        d.mesh.lookAt(d.lookOut);
+                        d.mesh.quaternion.copy(camera.quaternion);
                     }
                 } else {
                     target = d.sPos;
-                    if(d.isPhoto) d.mesh.scale.lerp(new THREE.Vector3(1,1,1), lerpSpeed);
+                    if(d.isPhoto) {
+                        d.mesh.scale.lerp(new THREE.Vector3(1,1,1), lerpSpeed);
+                        d.mesh.quaternion.copy(camera.quaternion);
+                    }
                     else dummy.rotation.set(time+d.offset, time*0.5, 0);
                 }
 
@@ -438,7 +408,6 @@
 
                 if(d.isPhoto) {
                     d.mesh.position.copy(dummy.position);
-                    if(STATE.mode==='SCATTER') d.mesh.rotation.z = Math.sin(time*0.5 + d.index)*0.08;
                 } else {
                     if(STATE.mode==='TREE') dummy.rotation.set(0,0,0);
                     dummy.updateMatrix();
@@ -462,7 +431,6 @@
                     if(res.multiHandLandmarks.length) {
                         STATE.hasHand = true;
                         if(trackDOM) { trackDOM.innerText = "ACTIVE"; trackDOM.className = 'stat-on'; }
-                        
                         const lm = res.multiHandLandmarks[0];
                         let fold=0; [8,12,16,20].forEach(i=>{ if(Math.hypot(lm[i].x-lm[0].x, lm[i].y-lm[0].y)<0.25) fold++; });
                         const isFist = fold>=3;
@@ -479,7 +447,6 @@
                                 STATE.mode='ZOOM';
                                 const photoList = objData.filter(d => d.isPhoto);
                                 if (photoList.length > 0) {
-                                    // 随机挑选
                                     const randomPhoto = photoList[Math.floor(Math.random() * photoList.length)];
                                     STATE.zoomIdx = randomPhoto.index; 
                                 }
@@ -513,6 +480,4 @@
         });
     </script>
 </body>
-
 </html>
-
