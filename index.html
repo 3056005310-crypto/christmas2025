@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Christmas Memories | Selective Render</title>
+    <title>Christmas Memories | True Color Photos</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Helvetica', sans-serif; background: radial-gradient(circle at 50% 40%, #1a1020 0%, #000000 90%); }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
@@ -61,8 +61,8 @@
         };
 
         const CONFIG = { colors: { green: 0x052e16, gold: 0xffeebb }, count: 1200, treeH: 35, treeR: 14 };
-        let scene, camera, renderer, composer, treeGroup, instances = {}, objData = [], magicSystem;
-        let photoGroup = new THREE.Group();
+        // 关键：新增 photoScene
+        let scene, photoScene, camera, renderer, composer, treeGroup, instances = {}, objData = [], magicSystem;
         const dummy = new THREE.Object3D();
         const STATE = { mode: 'TREE', zoomIdx: -1, input: {x:0, y:0}, hasHand:false };
 
@@ -73,25 +73,25 @@
         function initThree() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene(); 
+            // 关键：初始化独立的照片场景
+            photoScene = new THREE.Scene();
             treeGroup = new THREE.Group(); scene.add(treeGroup);
-            treeGroup.add(photoGroup);
 
             camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 500);
             camera.position.set(0, 0, 55); 
-            // 关键：相机默认能看到 0 层和 1 层
-            camera.layers.enable(0);
-            camera.layers.enable(1);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-            renderer.autoClear = false; // 关键：手动控制清除，实现分层
+            // 关键：手动控制清除
+            renderer.autoClear = false;
             container.appendChild(renderer.domElement);
 
             const rp = new RenderPass(scene, camera);
-            const bp = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
+            // 调整辉光参数，让圣诞树更亮一点，对比照片
+            const bp = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
             composer = new EffectComposer(renderer); 
-            composer.renderToScreen = false; // 先渲染到内存
+            composer.renderToScreen = false; 
             composer.addPass(rp); composer.addPass(bp);
 
             buildContent(); buildMagicDust();
@@ -101,7 +101,6 @@
 
         function createInst(geo, mat, count, type) {
             const mesh = new THREE.InstancedMesh(geo, mat, count);
-            mesh.layers.set(0); // 圣诞树在 0 层（有发光）
             treeGroup.add(mesh); instances[type] = mesh;
             for(let i=0; i<count; i++) {
                 const p = i/count; const y = (p - 0.5) * CONFIG.treeH; const maxR = (1 - p) * CONFIG.treeR * 1.2 + 0.5;
@@ -112,11 +111,13 @@
 
         function buildContent() {
             const gSphere = new THREE.SphereGeometry(0.7, 16, 16);
-            createInst(gSphere, new THREE.MeshStandardMaterial({color: CONFIG.colors.green}), 500, 'green');
-            createInst(gSphere, new THREE.MeshStandardMaterial({color: CONFIG.colors.gold, metalness:0.8}), 250, 'gold');
+            createInst(gSphere, new THREE.MeshStandardMaterial({color: CONFIG.colors.green, roughness:0.5}), 500, 'green');
+            createInst(gSphere, new THREE.MeshStandardMaterial({color: CONFIG.colors.gold, metalness:0.8, roughness:0.2}), 250, 'gold');
             const star = new THREE.Mesh(new THREE.OctahedronGeometry(2.5, 0), new THREE.MeshBasicMaterial({color:0xfffae0}));
-            star.layers.set(0);
             star.name='STAR'; star.position.y = CONFIG.treeH/2 + 2; treeGroup.add(star);
+            // 添加灯光到主场景
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4)); 
+            const sun = new THREE.DirectionalLight(0xffecd2, 1.0); sun.position.set(20, 20, 50); scene.add(sun);
         }
 
         function buildMagicDust() {
@@ -126,22 +127,25 @@
                 pos.push(Math.cos(theta)*r, (Math.random()-0.5)*60, Math.sin(theta)*r);
             }
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            magicSystem = new THREE.Points(geo, new THREE.PointsMaterial({size: 0.4, color: 0xffd700, transparent: true, opacity: 0.5}));
-            magicSystem.layers.set(0); 
+            magicSystem = new THREE.Points(geo, new THREE.PointsMaterial({size: 0.4, color: 0xffd700, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending}));
             scene.add(magicSystem);
         }
 
         window.buildPhotos = function(urls) {
-            photoGroup.clear(); objData = objData.filter(d=>!d.isPhoto);
+            // 关键：清空照片场景
+            photoScene.clear();
+            objData = objData.filter(d=>!d.isPhoto);
             const loader = new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
             urls.forEach((url, i) => {
-                const tex = loader.load(url); tex.colorSpace = THREE.SRGBColorSpace;
+                const tex = loader.load(url); 
+                // 关键：使用 sRGB 颜色空间，保证颜色正确
+                tex.colorSpace = THREE.SRGBColorSpace;
+                // 关键：使用基础材质，不受光照影响
                 const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 4.5), new THREE.MeshBasicMaterial({map: tex, side: 2}));
-                // 关键：照片放在 1 层（无发光，单独渲染）
-                mesh.layers.set(1); 
                 const p = i/urls.length; const y = (p-0.5)*(CONFIG.treeH-6); const r = (1-p)*CONFIG.treeR + 4; const ang = p*Math.PI*6;
                 objData.push({ mesh:mesh, index:i, isPhoto:true, tPos: new THREE.Vector3(Math.cos(ang)*r, y, Math.sin(ang)*r), sPos: new THREE.Vector3((Math.random()-0.5)*80, (Math.random()-0.5)*80, 20), cPos: new THREE.Vector3(0,0,0) });
-                photoGroup.add(mesh);
+                // 关键：将照片添加到独立场景
+                photoScene.add(mesh);
             });
         }
 
@@ -149,20 +153,70 @@
             requestAnimationFrame(animate);
             const time = Date.now()*0.001;
             
-            // 场景旋转逻辑
+            // 旋转主场景的树
             if(STATE.mode !== 'TREE') {
                 treeGroup.rotation.y += (STATE.input.x - treeGroup.rotation.y)*0.05;
                 treeGroup.rotation.x += (STATE.input.y*0.3 - treeGroup.rotation.x)*0.05;
             } else { treeGroup.rotation.y += 0.005; treeGroup.rotation.x += (0 - treeGroup.rotation.x)*0.05; }
 
-            const camQuat = new THREE.Quaternion(); camera.getWorldQuaternion(camQuat);
-            const parentQuat = new THREE.Quaternion();
-
             objData.forEach(d => {
-                let target = (STATE.mode==='ZOOM' && d.isPhoto && d.index===STATE.zoomIdx) ? photoGroup.worldToLocal(new THREE.Vector3(0,0,40)) : (STATE.mode==='TREE' ? d.tPos : d.sPos);
+                let target = (STATE.mode==='ZOOM' && d.isPhoto && d.index===STATE.zoomIdx) ? new THREE.Vector3(0,0,camera.position.z - 15) : (STATE.mode==='TREE' ? d.tPos : d.sPos);
                 d.cPos.lerp(target, 0.06);
                 if(d.isPhoto) {
                     d.mesh.position.copy(d.cPos);
-                    // Billboard 算法：始终平行于屏幕
-                    d.mesh.parent.getWorldQuaternion(parentQuat);
-                    d.mesh.quaternion.copy(parentQuat.invert()).multiply(camQuat);
+                    // 关键：简化的 Billboard，直接复制相机角度
+                    d.mesh.quaternion.copy(camera.quaternion);
+                    if(STATE.mode==='ZOOM' && d.index===STATE.zoomIdx) d.mesh.scale.lerp(new THREE.Vector3(2.5,2.5,2.5), 0.1); else d.mesh.scale.lerp(new THREE.Vector3(1,1,1), 0.1);
+                } else {
+                    dummy.position.copy(d.cPos); 
+                    if(STATE.mode!=='TREE') dummy.rotation.set(time, time*0.5, 0); else dummy.rotation.set(0,0,0);
+                    dummy.updateMatrix(); d.mesh.setMatrixAt(d.index, dummy.matrix);
+                }
+            });
+            Object.values(instances).forEach(i => i.instanceMatrix.needsUpdate = true);
+
+            // --- 核心渲染循环 ---
+            renderer.clear();
+            
+            // 1. 渲染主场景（带发光和色调映射）
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; // 开启色调映射
+            renderer.toneMappingExposure = 0.8;
+            composer.render(); 
+            renderer.render(scene, camera); 
+            
+            // 2. 渲染照片场景（无发光，无色调映射 -> 原色）
+            renderer.clearDepth(); // 清除深度，确保照片在最上层
+            renderer.toneMapping = THREE.NoToneMapping; // 关键：关闭色调映射，还原色彩
+            renderer.render(photoScene, camera);
+        }
+
+        async function initMediaPipe() {
+            try {
+                const vid = document.getElementById('video-input');
+                const hands = new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+                hands.setOptions({maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.5});
+                hands.onResults(res => {
+                    const trackDOM = document.getElementById('status-track'), gestDOM = document.getElementById('status-gest');
+                    if(res.multiHandLandmarks.length) {
+                        STATE.hasHand = true; trackDOM.innerText = "ACTIVE";
+                        const lm = res.multiHandLandmarks[0]; let fold=0; [8,12,16,20].forEach(i=>{ if(Math.hypot(lm[i].x-lm[0].x, lm[i].y-lm[0].y)<0.25) fold++; });
+                        STATE.input.x = -(lm[9].x - 0.5) * 4; STATE.input.y = (lm[9].y - 0.5) * 4;
+                        if(fold>=3) { STATE.mode='TREE'; STATE.zoomIdx=-1; gestDOM.innerText = "FIST"; }
+                        else if(Math.hypot(lm[4].x-lm[8].x, lm[4].y-lm[8].y) < 0.05) { if(STATE.mode !== 'ZOOM') { STATE.mode='ZOOM'; STATE.zoomIdx = Math.floor(Math.random()*SHARED_MEMORIES.photos.length); } gestDOM.innerText = "PINCH"; }
+                        else { STATE.mode='SCATTER'; gestDOM.innerText = "OPEN"; }
+                    } else { STATE.hasHand = false; trackDOM.innerText = "SEARCHING..."; }
+                });
+                const cam = new Camera(vid, {onFrame:async()=>{await hands.send({image:vid})}, width:480, height:360}); cam.start();
+            } catch(e) {}
+        }
+
+        window.startExperience = function() {
+            document.getElementById('start-overlay').style.display='none';
+            const audio = document.getElementById('bgm'); 
+            if(SHARED_MEMORIES.music) { audio.src = SHARED_MEMORIES.music; audio.play().catch(()=>{}); }
+            buildPhotos(SHARED_MEMORIES.photos);
+        };
+        function onResize() { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight); }
+    </script>
+</body>
+</html>
